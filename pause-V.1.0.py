@@ -1,5 +1,5 @@
-# Auteur : Nathan
-# Version : 1.0
+# Auteur : Théo
+# Version : 1.1
 # Date : 25.02.2026
 # Titre : Pause
 
@@ -7,16 +7,27 @@
 import tkinter as tk
 from tkinter import ttk
 from datetime import datetime, timedelta
+import json
+
+# Importation du json avec toutes les heures ( pour modifier plus simplement)
+json_path = "pause.json"
+try:
+    with open(json_path, 'r') as json_file:
+            pause_json = json.load(json_file)
+except:
+    print("Error with open the json file")
+    exit()
+
 
 # Heures fixes pour les barres de progression
-END_TIME_1 = "12:30"
-END_TIME_2 = "15:45"
+END_TIME_1 = pause_json.get("endTime1")
+END_TIME_2 = pause_json.get("endTime2")
 
 # Heure de début de la journée
-START_OF_DAY = "08:15"
+START_OF_DAY = pause_json.get("startOfDay")
 
 # Liste des heures de pause (format HH:MM)
-PAUSE_TIMES = ["9:00", "9:50", "10:50", "11:40", "12:30"]
+PAUSE_TIMES = pause_json.get("pauseTimes")
 
 
 def parse_time_to_datetime(time_str):
