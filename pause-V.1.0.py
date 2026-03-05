@@ -83,12 +83,48 @@ def create_app():
     root = tk.Tk()
     root.title("Prochaine pause")
 
+    # variable de mode compact
+    compact_var = tk.BooleanVar(value=False)
+    normal_geometry = None
+
+    def toggle_compact():
+        nonlocal normal_geometry
+        if compact_var.get():
+            # passer en mode compact : garder barre principale et compteur
+            if normal_geometry is None:
+                normal_geometry = root.geometry()
+            root.geometry("300x70+0+0")
+            root.attributes("-topmost", True)
+            # cacher les widgets non désirés
+            current_time_label.pack_forget()
+            next_pause_label.pack_forget()
+            frame_12.pack_forget()
+            frame_15.pack_forget()
+            # s'assurer que la barre principale est visible
+            frame_main.pack(pady=10)
+        else:
+            # revenir à l'état normal
+            if normal_geometry is not None:
+                root.geometry(normal_geometry)
+            root.attributes("-topmost", False)
+            # restaurer les widgets normaux
+            current_time_label.pack(pady=10)
+            next_pause_label.pack(pady=10)
+            frame_main.pack(pady=10)
+            frame_12.pack(pady=10)
+            frame_15.pack(pady=10)
+
+    # Checkbutton pour activer/désactiver le mode compact
+    check_compact = tk.Checkbutton(root, text="Mode compact", variable=compact_var, command=toggle_compact)
+    check_compact.pack(pady=5)
+
     # Labels principaux
     current_time_label = tk.Label(root, font=("Arial", 14))
     current_time_label.pack(pady=10)
 
     next_pause_label = tk.Label(root, font=("Arial", 14))
     next_pause_label.pack(pady=10)
+
 
     # --- BARRE PRINCIPALE ---
     frame_main = tk.Frame(root)
@@ -165,6 +201,7 @@ def create_app():
         progress_15h45['value'] = max(0, min(100, (elapsed_15 / total_15) * 100))
 
         remaining_15_label.config(text=format_remaining(end_15h45 - now))
+
 
         root.after(1000, update)
 
