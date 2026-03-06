@@ -6,6 +6,7 @@
 
 import tkinter as tk
 from tkinter import ttk
+from tkinter import messagebox
 from datetime import datetime, timedelta
 import json
 
@@ -82,26 +83,34 @@ def format_remaining(delta):
 def create_app():
     root = tk.Tk()
     root.title("Prochaine pause")
+    root.iconbitmap("icone.ico")
 
     # variable de mode compact
     compact_var = tk.BooleanVar(value=False)
     normal_geometry = None
+    
+    # Variable pour tracker si la notification a été envoyée
+    notification_sent = False
 
     def toggle_compact():
         nonlocal normal_geometry
         if compact_var.get():
-            # passer en mode compact : garder barre principale et compteur
+            # passer en mode compact : garder barre principale et compteur
             if normal_geometry is None:
                 normal_geometry = root.geometry()
-            root.geometry("300x70+0+0")
+            root.geometry("270x100+0+0")
             root.attributes("-topmost", True)
             # cacher les widgets non désirés
             current_time_label.pack_forget()
             next_pause_label.pack_forget()
             frame_12.pack_forget()
             frame_15.pack_forget()
-            # s'assurer que la barre principale est visible
+            # réorganiser frame_main pour mettre le texte en dessous
+            frame_main.pack_forget()
             frame_main.pack(pady=10)
+            progress_main.pack(side="top")
+            remaining_main_label.pack(side="top", padx=10, pady=5)
+            # s'assurer que la barre principale est visible
         else:
             # revenir à l'état normal
             if normal_geometry is not None:
@@ -111,8 +120,11 @@ def create_app():
             current_time_label.pack(pady=10)
             next_pause_label.pack(pady=10)
             frame_main.pack(pady=10)
+            progress_main.pack(side="left")
+            remaining_main_label.pack(side="left", padx=10)
             frame_12.pack(pady=10)
             frame_15.pack(pady=10)
+            
 
     # Checkbutton pour activer/désactiver le mode compact
     check_compact = tk.Checkbutton(root, text="Mode compact", variable=compact_var, command=toggle_compact)
@@ -172,14 +184,23 @@ def create_app():
     start_time = get_previous_pause(now, pause_list)
 
     def update():
-        nonlocal start_time
+        nonlocal start_time, notification_sent
 
         now = datetime.now()
         current_time_label.config(text="Heure actuelle : " + now.strftime("%H:%M:%S"))
-
+        
         # Prochaine pause
         next_pause = get_next_pause(now, pause_list)
         next_pause_label.config(text="Prochaine pause : " + next_pause.strftime("%H:%M"))
+
+        # Vérifier s'il reste 5 minutes avant la prochaine pause
+        remaining_seconds = (next_pause - now).total_seconds()
+        if 0 < remaining_seconds <= 300 and not notification_sent:
+            messagebox.showinfo("Prochaine pause", 
+                             f"La prochaine pause est dans 5 minutes ({next_pause.strftime('%H:%M')})")
+            notification_sent = True
+        elif remaining_seconds > 300:
+            notification_sent = False
 
         # Barre principale
         total_main = (next_pause - start_time).total_seconds()
