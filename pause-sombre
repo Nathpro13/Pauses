@@ -1,0 +1,241 @@
+import tkinter as tk
+from tkinter import ttk
+from datetime import datetime, timedelta
+
+# Heures fixes
+END_TIME_1 = "12:30"
+END_TIME_2 = "15:45"
+START_OF_DAY = "08:15"
+
+PAUSE_TIMES = ["9:00", "9:50", "10:50", "11:40", "12:30", "14:05", "14:55", "15:45"]
+
+
+def parse_time_to_datetime(time_str):
+    today = datetime.now().date()
+    hour, minute = map(int, time_str.split(":"))
+    return datetime(today.year, today.month, today.day, hour, minute)
+
+
+def parse_pause_times():
+    today = datetime.now().date()
+    times = []
+    for t in PAUSE_TIMES:
+        hour, minute = map(int, t.split(":"))
+        times.append(datetime(today.year, today.month, today.day, hour, minute))
+    return times
+
+
+def get_next_pause(now, pause_list):
+    for p in pause_list:
+        if p > now:
+            return p
+    return pause_list[0] + timedelta(days=1)
+
+
+def get_previous_pause(now, pause_list):
+    previous = None
+    for p in pause_list:
+        if p < now:
+            previous = p
+    if previous is None:
+        previous = pause_list[-1] - timedelta(days=1)
+    return previous
+
+
+def format_remaining(delta):
+    total_seconds = int(delta.total_seconds())
+    if total_seconds < 0:
+        return "0 s"
+
+    hours = total_seconds // 3600
+    minutes = (total_seconds % 3600) // 60
+    seconds = total_seconds % 60
+
+    if hours > 0:
+        return f"{hours} h {minutes:02d} min"
+    elif minutes > 0:
+        return f"{minutes} min {seconds:02d} s"
+    else:
+        return f"{seconds} s"
+
+
+def create_app():
+    root = tk.Tk()
+    root.title("⏳ Gestion des pauses")
+    root.geometry("650x500")
+    root.resizable(False, False)
+
+    style = ttk.Style()
+    style.theme_use("clam")
+
+    # Styles clair et sombre
+    LIGHT_BG = "#e8f1ff"
+    DARK_BG = "#0f172a"
+    LIGHT_TEXT = "#0d3c91"
+    DARK_TEXT = "#e2e8f0"
+
+    style.configure("Light.Horizontal.TProgressbar",
+                    troughcolor="#cfe0ff",
+                    background="#1f6fff",
+                    thickness=18)
+
+    style.configure("Dark.Horizontal.TProgressbar",
+                    troughcolor="#1e293b",
+                    background="#3b82f6",
+                    thickness=18)
+
+    dark_mode = {"enabled": False}
+
+    root.configure(bg=LIGHT_BG)
+
+    # ---------- TITRE ----------
+    title_label = tk.Label(root,
+                           text="Suivi des pauses",
+                           font=("Segoe UI", 22, "bold"),
+                           bg=LIGHT_BG,
+                           fg=LIGHT_TEXT)
+    title_label.pack(pady=20)
+
+    current_time_label = tk.Label(root, font=("Segoe UI", 13),
+                                  bg=LIGHT_BG, fg=LIGHT_TEXT)
+    current_time_label.pack()
+
+    next_pause_label = tk.Label(root, font=("Segoe UI", 13),
+                                bg=LIGHT_BG, fg=LIGHT_TEXT)
+    next_pause_label.pack(pady=(0, 20))
+
+    # ---------- FONCTION CREATION BARRE ----------
+    def create_progress_section(parent, text):
+        frame = tk.Frame(parent, bg=LIGHT_BG)
+        frame.pack(pady=10)
+
+        label = tk.Label(frame, text=text,
+                         font=("Segoe UI", 12),
+                         width=18,
+                         anchor="e",
+                         bg=LIGHT_BG,
+                         fg=LIGHT_TEXT)
+        label.grid(row=0, column=0, padx=10)
+
+        progress = ttk.Progressbar(frame,
+                                   style="Light.Horizontal.TProgressbar",
+                                   orient="horizontal",
+                                   length=300,
+                                   mode="determinate")
+        progress.grid(row=0, column=1)
+
+        percent_label = tk.Label(frame,
+                                 width=6,
+                                 anchor="center",
+                                 bg=LIGHT_BG,
+                                 fg=LIGHT_TEXT)
+        percent_label.grid(row=0, column=2, padx=5)
+
+        remaining_label = tk.Label(frame,
+                                   width=12,
+                                   anchor="w",
+                                   bg=LIGHT_BG,
+                                   fg=LIGHT_TEXT)
+        remaining_label.grid(row=0, column=3)
+
+        return frame, progress, percent_label, remaining_label
+
+    # Sections symétriques
+    frame_main, progress_main, percent_main_label, remaining_main_label = \
+        create_progress_section(root, "Prochaine pause :")
+
+    frame_12, progress_12h30, percent_12_label, remaining_12_label = \
+        create_progress_section(root, "Jusqu'à 12h30 :")
+
+    frame_15, progress_15h45, percent_15_label, remaining_15_label = \
+        create_progress_section(root, "Jusqu'à 15h45 :")
+
+    # ---------- MODE SOMBRE COMPLET ----------
+    def toggle_dark_mode():
+        dark_mode["enabled"] = not dark_mode["enabled"]
+
+        if dark_mode["enabled"]:
+            bg = DARK_BG
+            fg = DARK_TEXT
+            bar_style = "Dark.Horizontal.TProgressbar"
+            toggle_button.config(text="☀ Mode clair", bg="#1e293b")
+        else:
+            bg = LIGHT_BG
+            fg = LIGHT_TEXT
+            bar_style = "Light.Horizontal.TProgressbar"
+            toggle_button.config(text="🌙 Mode sombre", bg="#1f6fff")
+
+        root.configure(bg=bg)
+
+        for widget in root.winfo_children():
+            if isinstance(widget, tk.Label) or isinstance(widget, tk.Frame):
+                widget.configure(bg=bg)
+            for child in widget.winfo_children():
+                if isinstance(child, tk.Label) or isinstance(child, tk.Frame):
+                    child.configure(bg=bg, fg=fg)
+
+        title_label.configure(fg=fg)
+
+        progress_main.configure(style=bar_style)
+        progress_12h30.configure(style=bar_style)
+        progress_15h45.configure(style=bar_style)
+
+    toggle_button = tk.Button(root,
+                              text="🌙 Mode sombre",
+                              command=toggle_dark_mode,
+                              bg="#1f6fff",
+                              fg="white",
+                              font=("Segoe UI", 10, "bold"),
+                              width=18)
+    toggle_button.pack(pady=25)
+
+    # ---------- LOGIQUE TEMPS ----------
+    start_of_day = parse_time_to_datetime(START_OF_DAY)
+    end_12h30 = parse_time_to_datetime(END_TIME_1)
+    end_15h45 = parse_time_to_datetime(END_TIME_2)
+
+    pause_list = parse_pause_times()
+    now = datetime.now()
+    start_time = get_previous_pause(now, pause_list)
+
+    def update():
+        nonlocal start_time
+        now = datetime.now()
+
+        current_time_label.config(text="Heure actuelle : " + now.strftime("%H:%M:%S"))
+        next_pause = get_next_pause(now, pause_list)
+        next_pause_label.config(text="Prochaine pause réelle : " + next_pause.strftime("%H:%M"))
+
+        # Barre principale
+        total_main = (next_pause - start_time).total_seconds()
+        elapsed_main = (now - start_time).total_seconds()
+        percent_main = max(0, min(100, (elapsed_main / total_main) * 100))
+        progress_main["value"] = percent_main
+        percent_main_label.config(text=f"{int(percent_main)}%")
+        remaining_main_label.config(text=format_remaining(next_pause - now))
+
+        # 12h30
+        total_12 = (end_12h30 - start_of_day).total_seconds()
+        elapsed_12 = (now - start_of_day).total_seconds()
+        percent_12 = max(0, min(100, (elapsed_12 / total_12) * 100))
+        progress_12h30["value"] = percent_12
+        percent_12_label.config(text=f"{int(percent_12)}%")
+        remaining_12_label.config(text=format_remaining(end_12h30 - now))
+
+        # 15h45
+        total_15 = (end_15h45 - start_of_day).total_seconds()
+        elapsed_15 = (now - start_of_day).total_seconds()
+        percent_15 = max(0, min(100, (elapsed_15 / total_15) * 100))
+        progress_15h45["value"] = percent_15
+        percent_15_label.config(text=f"{int(percent_15)}%")
+        remaining_15_label.config(text=format_remaining(end_15h45 - now))
+
+        root.after(1000, update)
+
+    update()
+    return root
+
+
+if __name__ == "__main__":
+    app = create_app()
+    app.mainloop()
